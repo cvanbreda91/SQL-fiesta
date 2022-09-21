@@ -21,7 +21,7 @@ const initializeQuestions = () => {
     type: 'list',
     name: 'choice',
     message: 'Please choose:',
-    choices: ['View All Departments','Create a Department', 'Delete a Department']}
+    choices: ['View All Departments','Create a Department', 'Delete a Department', 'View All Roles', 'Create a Role', 'Delete a Role', 'View All Employees']}
   ]).then (function(choice){
       switch (choice.choice) {
         case 'View All Departments':
@@ -32,6 +32,18 @@ const initializeQuestions = () => {
           break;
         case 'Delete a Department':
           deleteDepartment();
+          break;
+        case 'View All Roles':
+          viewAllRoles();
+          break;
+        case 'Create a Role':
+          createRole();
+          break;
+        case 'Delete a Role':
+          deleteRole();
+          break;
+        case 'View All Employees':
+          viewAllEmployees();
           break
       }
   })}
@@ -47,10 +59,7 @@ const viewAllDepartments = () => {
       return err;
     } 
   })
-  .catch(err => {
-    throw err
-})
-  }
+}
 
 const createDepartment = () => {
   return inquirer.prompt ([
@@ -70,16 +79,12 @@ const createDepartment = () => {
     }
   })
 })
-.catch(err => {
-  throw err
-})
 }
   
 
 initializeQuestions();
 
 const deleteDepartment = () => {
-
   const sql = 'SELECT * FROM departments';
   db.promise().query(sql)
   .then((res) => {
@@ -104,83 +109,111 @@ const deleteDepartment = () => {
   .then(answer => {
       console.log(answer);
       return db.promise().query('DELETE FROM departments WHERE id = ?', answer.deptId);
-
   })
   .then(res => {
       // console.log(res);
       console.log('Department Deleted Successfully')
       viewAllDepartments();
   })
-
-  .catch(err => {
-      throw err
-  });
-
-
 }
 
-// // Get all roles and their departnemts - working
-// app.get('/api/roles', (req, res) => {
-//   const sql = `SELECT roles.*, departments.name
-//                 AS department_name 
-//                 FROM roles 
-//                 LEFT JOIN departments 
-//                 ON roles.department_id = departments.id`;
+const viewAllRoles = () => {
+  const sql = `SELECT roles.*, departments.name
+                AS department_name 
+                FROM roles 
+                LEFT JOIN departments 
+                ON roles.department_id = departments.id`;
+  db.query(sql,(err, row) => {
+    console.table(row)
+    if (err) {
+      return err;
+    } 
+  })
+}
 
-//   db.query(sql, (err, rows) => {
-//     if (err) {
-//       res.status(500).json({ error: err.message });
-//       return;
-//     }
-//     res.json({
-//       message: 'success',
-//       data: rows
-//     });
-//   });
-// });
+const createRole = () => {
+  const sql = 'SELECT * FROM departments';
+  db.promise().query(sql)
+  .then((res) => {
+    return res[0].map(departments => {
+      return {
+              name: departments.name,
+              value: departments.id
+              }
+      })
+  })  
+  .then((departments) => {
+    return inquirer.prompt([
+        {
+        type: 'text',
+        name: 'title',
+        message: 'What is the title of your new role?'
+        },
+        {
+        type: 'input',
+        name: 'salary',
+        message: 'What is the salary of the role?'
+        },
+        {
+        type: 'list',
+        name: 'departments',
+        choices: departments,
+        message: 'What department does the role belong to?'
+        }
+    ])
+})  .then(answer => {
+  console.log(answer);
+  return db.promise().query('INSERT INTO roles SET ?',{title: answer.title, salary: answer.salary, department_id:answer.departments});
+})
+.then(res => {
+  viewAllRoles();
+})}
 
-// // Get single role with department - working
-// app.get('/api/role/:id', (req, res) => {
-//   const sql = `SELECT roles.*, departments.name 
-//                AS department_name 
-//                FROM roles
-//                LEFT JOIN departments
-//                ON roles.department_id = departments.id 
-//                WHERE roles.id = ?`;
-//   const params = [req.params.id];
+const deleteRole = () => {
+  const sql = 'SELECT * FROM roles';
+  db.promise().query(sql)
+  .then((res) => {
+      // make the choice dept arr
+      return res[0].map(roles => {
+          return {
+              name: roles.title,
+              value: roles.id
+          }
+      })
+  })
+  .then((roles) => {
+      return inquirer.prompt([
+          {
+              type: 'list',
+              name: 'roleId',
+              choices: roles,
+              message: 'Please select the role you want to delete.'
+          }
+      ])
+  })
+  .then(answer => {
+      console.log(answer);
+      return db.promise().query('DELETE FROM roles WHERE id = ?', answer.roleId);
+  })
+  .then(res => {
+      // console.log(res);
+      console.log('Role Deleted Successfully')
+      viewAllRoles();
+  })
+}
 
-//   db.query(sql, params, (err, row) => {
-//     if (err) {
-//       res.status(400).json({ error: err.message });
-//       return;
-//     }
-//     res.json({
-//       message: 'success',
-//       data: row
-//     });
-//   });
-// });
-
-// // Create a role - working
-// app.post('/api/role', ({ body }, res) => {
-//   const sql = `INSERT INTO roles (title, salary, department_id) VALUES (?,?,?)`;
-//   const params = [
-//     body.title,
-//     body.salary,
-//     body.department_id
-//   ];
-
-//   db.query(sql, params, (err, result) => {
-//     if (err) {
-//       res.status(400).json({ error: err.message });
-//       return;
-//     }
-//     res.json({
-//       message: 'success',
-//       data: body
-//     });
-//   });
-// });
+const viewAllEmployees = () => {
+  const sql = `SELECT employees.first_name, employees.last_name, roles.title, departments.name
+              FROM employees
+              JOIN roles ON employees.role_id = roles.id
+              JOIN departments ON roles.department_id = departments.id;`;
+  db.query(sql,(err, row) => {
+    console.table(row)
+    if (err) {
+      return err;
+    } 
+  })
+}
 
 // // Update a role's department - working
 // app.put('/api/role/:id', (req, res) => {
@@ -208,23 +241,6 @@ const deleteDepartment = () => {
 // // Delete a role - working
 // app.delete('/api/role/:id', (req, res) => {
 //   const sql = `DELETE FROM roles WHERE id = ?`;
-
-//   db.query(sql, req.params.id, (err, result) => {
-//     if (err) {
-//       res.status(400).json({ error: res.message });
-//     } else if (!result.affectedRows) {
-//       res.json({
-//         message: 'Role not found'
-//       });
-//     } else {
-//       res.json({
-//         message: 'deleted',
-//         changes: result.affectedRows,
-//         id: req.params.id
-//       });
-//     }
-//   });
-// });
 
 
 // // Get all employees alphabetized by last name - working
