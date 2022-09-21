@@ -21,19 +21,24 @@ const initializeQuestions = () => {
     type: 'list',
     name: 'choice',
     message: 'Please choose:',
-    choices: ['View All Departments','Create a Department']}
-  ]).then ((choice)=>{
-    if (choice.choice == 'View All Departments' ) {
-      getAllDepartments();
-    }
-    if (choice.choice == "Create a Department") {
-      createDepartment();
-    }
+    choices: ['View All Departments','Create a Department', 'Delete a Department']}
+  ]).then (function(choice){
+      switch (choice.choice) {
+        case 'View All Departments':
+          viewAllDepartments();
+          break;
+        case 'Create a Department':
+          createDepartment();
+          break;
+        case 'Delete a Department':
+          deleteDepartment();
+          break
+      }
   })}
 
 
 
-const getAllDepartments = () => {
+const viewAllDepartments = () => {
   const sql = `SELECT * FROM departments`;
   
   db.query(sql,(err, row) => {
@@ -41,7 +46,10 @@ const getAllDepartments = () => {
     if (err) {
       return err;
     } 
-  });
+  })
+  .catch(err => {
+    throw err
+})
   }
 
 const createDepartment = () => {
@@ -58,35 +66,58 @@ const createDepartment = () => {
     if (err) {
       return err;
     } else {
-      getAllDepartments ()
+      viewAllDepartments ()
     }
   })
+})
+.catch(err => {
+  throw err
 })
 }
   
 
 initializeQuestions();
 
-// // Delete a department - working
-// app.delete('/api/department/:id', (req, res) => {
-// const sql = `DELETE FROM departments WHERE id = ?`;
+const deleteDepartment = () => {
 
-// db.query(sql, req.params.id, (err, result) => {
-//   if (err) {
-//     res.status(400).json({ error: res.message });
-//   } else if (!result.affectedRows) {
-//     res.json({
-//       message: 'Role not found'
-//     });
-//   } else {
-//     res.json({
-//       message: 'deleted',
-//       changes: result.affectedRows,
-//       id: req.params.id
-//     });
-//   }
-// });
-// });
+  const sql = 'SELECT * FROM departments';
+  db.promise().query(sql)
+  .then((res) => {
+      // make the choice dept arr
+      return res[0].map(departments => {
+          return {
+              name: departments.name,
+              value: departments.id
+          }
+      })
+  })
+  .then((departments) => {
+      return inquirer.prompt([
+          {
+              type: 'list',
+              name: 'deptId',
+              choices: departments,
+              message: 'Please select the department you want to delete.'
+          }
+      ])
+  })
+  .then(answer => {
+      console.log(answer);
+      return db.promise().query('DELETE FROM departments WHERE id = ?', answer.deptId);
+
+  })
+  .then(res => {
+      // console.log(res);
+      console.log('Department Deleted Successfully')
+      viewAllDepartments();
+  })
+
+  .catch(err => {
+      throw err
+  });
+
+
+}
 
 // // Get all roles and their departnemts - working
 // app.get('/api/roles', (req, res) => {
