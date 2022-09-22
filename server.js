@@ -288,7 +288,7 @@ function viewEmployeesByManager() {
       })
       .then(answer => {
           console.log(answer);
-          return db.promise().query('SELECT CONCAT(last_name,", ",first_name) FROM employees WHERE manager_id=?',answer.managerId);
+          return db.promise().query('SELECT CONCAT(last_name,", ",first_name) AS employee_names FROM employees WHERE manager_id=?',answer.managerId);
       })
       .then(res => {
           console.table(res[0]);
