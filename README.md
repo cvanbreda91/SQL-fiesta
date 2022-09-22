@@ -39,7 +39,7 @@ Please email me with questions!
 * cvanbreda91@gmail.com
 
 ## Screenshot
-![website-image]()
+![website-image](https://github.com/cvanbreda91/SQL-fiesta/blob/main/src/images/results.gif.gif?raw=true)
 
 ## Deployed Website Link
 
