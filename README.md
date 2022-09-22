@@ -42,4 +42,4 @@ Please email me with questions!
 ![website-image](https://github.com/cvanbreda91/SQL-fiesta/blob/main/src/images/results.gif.gif?raw=true)
 
 ## Walkthrough Link
-
+https://drive.google.com/file/d/1tncCFmCszXK5UO2Q2tqPtwhTTloO2Mre/view?usp=sharing
