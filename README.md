@@ -41,5 +41,5 @@ Please email me with questions!
 ## Screenshot
 ![website-image](https://github.com/cvanbreda91/SQL-fiesta/blob/main/src/images/results.gif.gif?raw=true)
 
-## Deployed Website Link
+## Walkthrough Link
 
