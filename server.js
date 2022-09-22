@@ -21,7 +21,10 @@ const initializeQuestions = () => {
     type: 'list',
     name: 'choice',
     message: 'Please choose:',
-    choices: ['View All Departments','Create a Department', 'Delete a Department', 'View All Roles', 'Create a Role', 'Delete a Role', 'View All Employees']}
+    choices: ['View All Departments','Create a Department', 'Delete a Department', 
+              'View All Roles', 'Create a Role', 'Delete a Role', 
+              'View All Employees', 'View Employees by Manager','View Employees by Department','Create an Employee', 'Update Employee Role', 'Update Employee Manager','Delete an Employee',
+              'Quit']}
   ]).then (function(choice){
       switch (choice.choice) {
         case 'View All Departments':
@@ -44,20 +47,73 @@ const initializeQuestions = () => {
           break;
         case 'View All Employees':
           viewAllEmployees();
-          break
+          break;
+        case 'View Employees by Manager':
+          viewEmployeesByManager()
+          break;
+        case 'View Employees by Department':
+          viewEmployeesByDeparment()
+          break;
+        case 'Create an Employee':
+          createEmployee();
+          break;
+        case 'Update Employee Role':
+          updateEmployeeRole();
+          break;
+        case 'Update Employee Manager':
+          updateEmployeeManager();
+          break;
+        case 'Delete an Employee':
+          deleteEmployee();
+          break;
+        case 'Quit':
+          db.end();
+          console.log("Have a good day!")
+          break;
       }
   })}
 
-
-
+  const chooseRole = () => {
+    return db.promise().query("SELECT * FROM roles")
+        .then(res => {
+            return res[0].map(roles => {
+                return {
+                    name: roles.title,
+                    value: roles.id
+                }
+            })
+        })
+  }
+  
+  const chooseEmployee = () => {
+    return db.promise().query("SELECT * FROM employees ORDER BY last_name")
+        .then(res => {
+            return res[0].map(employee => {
+                return {
+                    name: `${employee.last_name}, ${employee.first_name}`,
+                    value: employee.id,
+                }
+            })
+        })
+  }
+  
+  const chooseManager = () => {
+    return db.promise().query("SELECT * FROM employees ORDER BY last_name")
+        .then(res => {
+            return res[0].map(manager => {
+                return {
+                    name: `${manager.last_name}, ${manager.first_name}`,
+                    value: manager.id,
+                }
+            })
+        })
+  }
+  
 const viewAllDepartments = () => {
   const sql = `SELECT * FROM departments`;
-  
   db.query(sql,(err, row) => {
-    console.table(row)
-    if (err) {
-      return err;
-    } 
+    console.table(row);
+    initializeQuestions()
   })
 }
 
@@ -80,9 +136,6 @@ const createDepartment = () => {
   })
 })
 }
-  
-
-initializeQuestions();
 
 const deleteDepartment = () => {
   const sql = 'SELECT * FROM departments';
@@ -125,9 +178,7 @@ const viewAllRoles = () => {
                 ON roles.department_id = departments.id`;
   db.query(sql,(err, row) => {
     console.table(row)
-    if (err) {
-      return err;
-    } 
+    initializeQuestions()
   })
 }
 
@@ -203,154 +254,172 @@ const deleteRole = () => {
 }
 
 const viewAllEmployees = () => {
-  const sql = `SELECT employees.first_name, employees.last_name, roles.title, departments.name
-              FROM employees
-              JOIN roles ON employees.role_id = roles.id
-              JOIN departments ON roles.department_id = departments.id;`;
+  const sql = `SELECT employee.id AS employee_id, employee.last_name ,employee.first_name,
+              CONCAT(manager.last_name,", ",manager.first_name) as manager_name, roles.title, roles.salary, departments.name AS department
+              FROM employees employee
+              LEFT OUTER JOIN employees manager ON employee.manager_id = manager.id
+              JOIN roles ON employee.role_id=roles.id
+              JOIN departments ON roles.department_id=departments.id
+              ORDER BY employee.last_name`;
   db.query(sql,(err, row) => {
     console.table(row)
-    if (err) {
-      return err;
-    } 
+    initializeQuestions()
   })
 }
+function viewEmployeesByManager() {
+  db.promise().query('SELECT *  FROM employees ORDER BY last_name')
+      .then((res) => {
+          return res[0].map(employees => {
+              return {
+                  name: `${employees.last_name}, ${employees.first_name}`,
+                  value: employees.id
+              }
+          })
+      })
+      .then(async (chooseManager) => {
+          return inquirer.prompt([
+              {
+                  type: 'list',
+                  name: 'managerId',
+                  choices: chooseManager,
+                  message: 'Please select the manager whose employees you want to view.'
+              }
+          ])
+      })
+      .then(answer => {
+          console.log(answer);
+          return db.promise().query('SELECT CONCAT(last_name,", ",first_name) FROM employees WHERE manager_id=?',answer.managerId);
+      })
+      .then(res => {
+          console.table(res[0]);
+          initializeQuestions()
+      });
+}
 
-// // Update a role's department - working
-// app.put('/api/role/:id', (req, res) => {
-//   const sql = `UPDATE  roles SET department_id= ? 
-//                WHERE id = ?`;
-//   const params = [req.body.department_id, req.params.id];
+function viewEmployeesByDeparment() {
+  db.promise().query('SELECT *  FROM departments')
+      .then((res) => {
+          return res[0].map(departments => {
+              return {
+                  name: departments.name,
+                  value: departments.id
+              }
+          })
+      })
+      .then((departments) => {
+          return inquirer.prompt([
+              {
+                  type: 'list',
+                  name: 'departmentId',
+                  choices: departments,
+                  message: 'Please select the department whose employees you want to view.'
+              }
+          ])
+      })
+      .then(answer => {
+          console.log(answer);
+          return db.promise().query('SELECT CONCAT(employees.last_name,", ",employees.first_name) AS employee_name, roles.title FROM employees JOIN roles ON employees.role_id = roles.id JOIN departments on roles.department_id = departments.id WHERE departments.id=?',answer.departmentId);
+      })
+      .then(res => {
+          console.table(res[0]);
+          initializeQuestions()
+      });
+}
 
-//   db.query(sql, params, (err, result) => {
-//     if (err) {
-//       res.status(400).json({ error: err.message });
-//     } else if (!result.affectedRows) {
-//       res.json({
-//         message: 'Role not found'
-//       });
-//     } else {
-//       res.json({
-//         message: 'success',
-//         data: req.body,
-//         changes: result.affectedRows
-//       });
-//     }
-//   });
-// });
+async function createEmployee()  {
+  inquirer.prompt([
+    {
+        name: "firstname",
+        type: "input",
+        message: "Enter their first name "
+    },
+    {
+        name: "lastname",
+        type: "input",
+        message: "Enter their last name "
+    },
+    {
+        name: "role",
+        type: "list",
+        message: "What is their role? ",
+        choices: await chooseRole()
+    },
+    {
+        name: "manager",
+        type: "list",
+        message: "Whats their managers name?",
+        choices: await chooseManager()
+    }
+]).then(function (answer) {
+    db.query("INSERT INTO employees SET ?",{first_name: answer.firstname,last_name: answer.lastname,manager_id: answer.manager,role_id: answer.role})
+})
+.then(res => {
+  console.log('Employee Added Successfully')
+  viewAllEmployees();
+})
+}
 
-// // Delete a role - working
-// app.delete('/api/role/:id', (req, res) => {
-//   const sql = `DELETE FROM roles WHERE id = ?`;
+async function updateEmployeeRole()  {
+  inquirer.prompt([
+    {
+        name: "employee",
+        type: "list",
+        message: "Which Employee's Role are you updating?",
+        choices: await chooseEmployee()
+    },
+    {
+        name: "role",
+        type: "list",
+        message: "What is their New Role?",
+        choices: await chooseRole()
+    }
+]).then(function (answer) {
+    db.promise().query("UPDATE employees SET role_id = ? WHERE id = ?",[answer.role, answer.employee])
+})
+.then(res => {
+  console.log('Employee Updated Successfully')
+  viewAllEmployees();
+})
+}
 
+async function updateEmployeeManager()  {
+  inquirer.prompt([
+    {
+        name: "employee",
+        type: "list",
+        message: "Which Employee's Manager are you updating?",
+        choices: await chooseEmployee()
+    },
+    {
+        name: "manager",
+        type: "list",
+        message: "Who is their New Manager?",
+        choices: await chooseManager()
+    }
+]).then(function (answer) {
+    db.promise().query("UPDATE employees SET manager_id = ? WHERE id = ?",[answer.manager, answer.employee])
+})
+.then(res => {
+  console.log('Employee Updated Successfully')
+  viewAllEmployees();
+})
+}
 
-// // Get all employees alphabetized by last name - working
-// app.get('/api/employees', (req, res) => {
-//   const sql = `SELECT * FROM employees ORDER BY last_name`;
+async function deleteEmployee()  {
+  inquirer.prompt([
+    {
+        name: "employee",
+        type: "list",
+        message: "Which Employee are you Deleting?",
+        choices: await chooseEmployee()
+    },
+]).then(function (answer) {
+    db.promise().query('DELETE FROM employees WHERE id = ?', answer.employee)
+})
+.then(res => {
+  console.log('Employee Deleted Successfully')
+  viewAllEmployees();
+})
+}
 
-//   db.query(sql, (err, rows) => {
-//     if (err) {
-//       res.status(500).json({ error: err.message });
-//       return;
-//     }
-//     res.json({
-//       message: 'success',
-//       data: rows
-//     });
-//   });
-// });
-
-// // Get all employees for single manager - working
-// app.get('/api/employees/:manager_id', (req, res) => {
-//   const sql = `SELECT * FROM employees WHERE manager_id = ?`;
-//   const params = [req.params.manager_id];
-
-//   db.query(sql, params, (err, row) => {
-//     if (err) {
-//       res.status(400).json({ error: err.message });
-//       return;
-//     }
-//     res.json({
-//       message: 'success',
-//       data: row
-//     });
-//   });
-// });
-
-// // Get single employee - working
-// app.get('/api/employee/:id', (req, res) => {
-//   const sql = `SELECT * FROM employees WHERE id = ?`;
-//   const params = [req.params.id];
-
-//   db.query(sql, params, (err, row) => {
-//     if (err) {
-//       res.status(400).json({ error: err.message });
-//       return;
-//     }
-//     res.json({
-//       message: 'success',
-//       data: row
-//     });
-//   });
-// });
-
-// // Create an employee - working
-// app.post('/api/employee', ({ body }, res) => {
-//   const sql = `INSERT INTO employees (first_name, last_name, role_id, manager_id) VALUES (?,?,?,?)`;
-//   const params = [body.first_name, body.last_name, body.role_id, body.manager_id];
-
-//   db.query(sql, params, (err, result) => {
-//     if (err) {
-//       res.status(400).json({ error: err.message });
-//       return;
-//     }
-//     res.json({
-//       message: 'success',
-//       data: body
-//     });
-//   });
-// });
-
-// // Update an employees manager - working
-// app.put('/api/employee/:id', (req, res) => {
-
-//   const sql = `UPDATE employees SET manager_id = ? WHERE id = ?`;
-//   const params = [req.body.manager_id, req.params.id];
-
-//   db.query(sql, params, (err, result) => {
-//     if (err) {
-//       res.status(400).json({ error: err.message });
-//     } else if (!result.affectedRows) {
-//       res.json({
-//         message: 'Employee not found'
-//       });
-//     } else {
-//       res.json({
-//         message: 'success',
-//         data: req.body,
-//         changes: result.affectedRows
-//       });
-//     }
-//   });
-// });
-
-// // Delete an employee - working
-// app.delete('/api/employee/:id', (req, res) => {
-//   const sql = `DELETE FROM employees WHERE id = ?`;
-
-//   db.query(sql, req.params.id, (err, result) => {
-//     if (err) {
-//       res.status(400).json({ error: res.message });
-//     } else if (!result.affectedRows) {
-//       res.json({
-//         message: 'Employee not found'
-//       });
-//     } else {
-//       res.json({
-//         message: 'deleted',
-//         changes: result.affectedRows,
-//         id: req.params.id
-//       });
-//     }
-//   });
-// });
-
+initializeQuestions();

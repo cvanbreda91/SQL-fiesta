@@ -27,5 +27,5 @@ CREATE TABLE employees (
   manager_id INTEGER REFERENCES employees(id),
   CONSTRAINT fk_role 
   FOREIGN KEY (role_id)
-   REFERENCES roles(id) 
+  REFERENCES roles(id) 
 );
